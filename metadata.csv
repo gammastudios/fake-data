@@ -1,0 +1,5 @@
+attribute_name,data_type
+name,string
+age,int
+hire_date,date
+customer_account,account
