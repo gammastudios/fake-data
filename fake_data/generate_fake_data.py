@@ -45,6 +45,8 @@ def generate_fake_data(field_name: str, field_type: str, fake: Faker) -> any:
             return fake.name()
         elif "email" in field_name.lower():
             return fake.email()
+        elif "address" in field_name.lower():
+            return fake.address().replace('\n', ', ')
         else:
             return fake.word()
     elif field_type == "int":
@@ -67,7 +69,7 @@ def generate_data(metadata_csv: str = "metadata.csv", output_csv: str = "output.
     :param rows: Number of data rows to generate. Default is 100.
     """
 
-    fake = Faker()
+    fake = Faker('en_AU')
     fake.add_provider(FinanceProvider)
     fake.add_provider(TxnDatetimeProvider)
     
