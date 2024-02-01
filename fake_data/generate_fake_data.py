@@ -1,12 +1,13 @@
 import csv
 from faker import Faker
+from faker.providers import BaseProvider
 import pandas as pd
+from rich.console import Console
+from rich.progress import track
 import typer
 from typing import List
 
 app = typer.Typer()
-
-from faker.providers import BaseProvider
 
 class FinanceProvider(BaseProvider):
     def customer_account(self):
@@ -53,8 +54,8 @@ def generate_data(metadata_csv: str = "metadata.csv", output_csv: str = "output.
     metadata = pd.read_csv(metadata_csv)
     data = []
     
-    # Generate data rows
-    for _ in range(rows):
+    # Generate data rows with progress bar
+    for _ in track(range(rows), "Generating data..."):
         row = {}
         for _, meta in metadata.iterrows():
             row[meta['attribute_name']] = generate_fake_data(meta['attribute_name'], meta['data_type'], fake)
@@ -64,7 +65,8 @@ def generate_data(metadata_csv: str = "metadata.csv", output_csv: str = "output.
     df = pd.DataFrame(data)
     df.to_csv(output_csv, index=False)
 
-    typer.echo(f"Generated data saved to {output_csv}")
+    console = Console()
+    console.print(f'Generated data saved to "{output_csv}"')
 
 if __name__ == "__main__":
     app()
