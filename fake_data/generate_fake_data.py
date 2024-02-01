@@ -6,8 +6,26 @@ from rich.console import Console
 from rich.progress import track
 import typer
 from typing import List
+from datetime import datetime, timedelta
 
 app = typer.Typer()
+
+# ripped from @datwiz
+# https://github.com/gammastudios/data-with-gcp/blob/main/bq-external-tables/src/create_fake_csv_data.py
+class TxnDatetimeProvider(BaseProvider):
+    def __init__(self, generator, days_of_data=365):
+        super().__init__(generator)
+        self.generator = generator
+        self.end_dts = datetime.now()
+        self.start_dts = self.end_dts - timedelta(days=days_of_data)
+        self.format = '%Y-%m-%d %H:%M:%S'
+
+    def txn_datetime(self):
+        fake_date = self.generator.date_time_between(start_date=self.start_dts, end_date=self.end_dts)
+        return fake_date.strftime(self.format)
+
+    def txn_amount(self):
+        return self.generator.pydecimal(left_digits=3, right_digits=2, positive=True)
 
 class FinanceProvider(BaseProvider):
     def customer_account(self):
@@ -20,6 +38,8 @@ class FinanceProvider(BaseProvider):
 def generate_fake_data(field_name: str, field_type: str, fake: Faker) -> any:
     if field_type == "account":
         return fake.customer_account()
+    elif field_type == "timestamp":
+        return fake.txn_datetime()
     elif field_type == "string":
         if "name" in field_name.lower():
             return fake.name()
@@ -41,12 +61,15 @@ def generate_data(metadata_csv: str = "metadata.csv", output_csv: str = "output.
     Generate fake data based on the metadata described in a CSV file.
 
     :param metadata_csv: Path to the CSV file containing metadata definitions. Default is 'metadata.csv'.
+
     :param output_csv: Path for the generated CSV file. Default is 'output.csv'.
+
     :param rows: Number of data rows to generate. Default is 100.
     """
 
     fake = Faker()
     fake.add_provider(FinanceProvider)
+    fake.add_provider(TxnDatetimeProvider)
     
     if seed is not None:
         Faker.seed(seed)

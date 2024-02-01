@@ -3,3 +3,4 @@ name,string
 age,int
 hire_date,date
 customer_account,account
+source_date,timestamp
