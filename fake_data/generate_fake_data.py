@@ -7,8 +7,14 @@ from rich.progress import track
 import typer
 from typing import List
 from datetime import datetime, timedelta
+import os
 
 app = typer.Typer()
+
+def load_reference_data(reference_file):
+    df = pd.read_csv(reference_file)
+    print(df)
+    return df['id'].tolist() # Return a list of all ID values
 
 # ripped from @datwiz
 # https://github.com/gammastudios/data-with-gcp/blob/main/bq-external-tables/src/create_fake_csv_data.py
@@ -34,6 +40,28 @@ class FinanceProvider(BaseProvider):
         formatted_account = '-'.join(account[i:i+2] for i in range(0, len(account), 2))
         return formatted_account
 
+def build_fk_pools(metadata):
+    """
+    Creates a dictionary of foreign key pools from metadata and previously generated CSV files.
+
+    Args:
+        metadata: A pandas DataFrame containing metadata definitions.
+        output_dir: The directory where generated CSV files containing primary keys are located.
+
+    Returns:
+        A dictionary where keys are foreign key attribute names and values are lists of valid 
+        primary key values to be used for generating data with referential integrity.
+    """    
+    fk_pools = {}
+    for i, meta in metadata.iterrows():
+        if 'key_type' in meta and meta['key_type'] == 'FK':  # Only process if 'key_type' exists and is 'FK'
+            print(f"Row {i}: {meta}")  # Print the row causing the error
+
+            reference_file = meta['reference_file']
+            fk_pools[meta['attribute_name']] = load_reference_data(reference_file)
+    return fk_pools
+
+
 
 def generate_fake_data(field_name: str, field_type: str, fake: Faker) -> any:
     if field_type == "account":
@@ -57,41 +85,59 @@ def generate_fake_data(field_name: str, field_type: str, fake: Faker) -> any:
     else:
         return -1
 
+# customer_account needs to go first here, bc of the FK relationship so
+# id's in customer_account need to be created first, then referenced in customer
+# TODO: determine dependencies when generating fake-data between FK and PK
 @app.command()
-def generate_data(metadata_csv: str = "metadata.csv", output_csv: str = "output.csv", rows: int = 100, seed: int = None):
+def generate_data(metadata_csvs: List[str] = typer.Option(["customer_account.csv","customer.csv"], help="List of metadata CSV files to process"),
+                  output_dir: str = "output", 
+                  rows: int = 100, 
+                  seed: int = None):
     """
-    Generate fake data based on the metadata described in a CSV file.
+    Generate fake data for multiple metadata CSV files.
 
-    :param metadata_csv: Path to the CSV file containing metadata definitions. Default is 'metadata.csv'.
-
-    :param output_csv: Path for the generated CSV file. Default is 'output.csv'.
-
-    :param rows: Number of data rows to generate. Default is 100.
+    :param metadata_csvs: A list of paths to metadata CSV files.
+    :param output_dir: Directory to save the generated output CSV files.
+    :param rows: Number of data rows to generate per file. Default is 100.
     """
 
     fake = Faker('en_AU')
     fake.add_provider(FinanceProvider)
     fake.add_provider(TxnDatetimeProvider)
+
+    fk_pool = {}
     
     if seed is not None:
         Faker.seed(seed)
-    # Read the metadata CSV
-    metadata = pd.read_csv(metadata_csv)
-    data = []
-    
-    # Generate data rows with progress bar
-    for _ in track(range(rows), "Generating data..."):
-        row = {}
-        for _, meta in metadata.iterrows():
-            row[meta['attribute_name']] = generate_fake_data(meta['attribute_name'], meta['data_type'], fake)
-        data.append(row)
-    
-    # Convert to DataFrame and save to CSV
-    df = pd.DataFrame(data)
-    df.to_csv(output_csv, index=False)
 
-    console = Console()
-    console.print(f'Generated data saved to "{output_csv}"')
+    # Read the metadata CSV's
+    for metadata_csv in metadata_csvs:
+        metadata = pd.read_csv(metadata_csv)
+        filename= os.path.splitext(metadata_csv)[0]
+
+        data = []  # Reset data for each new file
+    
+        # Generate data rows with progress bar
+        for _ in track(range(rows), "Generating data..."):
+            row = {}
+            for _, meta in metadata.iterrows():
+                fk_pool[filename] = []
+                row[meta['attribute_name']] = generate_fake_data(meta['attribute_name'], meta['data_type'], fake)
+                if 'id' in meta['attribute_name']:
+                    fk_pool[filename].append((row[meta['attribute_name']]))
+                if 'id' in meta['attribute_name'].lower() and 'pk' in meta['key_type']:
+                    row[meta['attribute_name']] = fk_pool[row[meta['reference_file']]].pop()
+            data.append(row)
+    
+            # Convert to DataFrame and save to CSV
+            df = pd.DataFrame(data)
+        # Output File Name
+        output_file = os.path.join(output_dir, f"{filename}_output.csv") 
+        os.makedirs(output_dir, exist_ok=True)  # Create 'output' if it doesn't exist
+        df.to_csv(output_file, index=False)
+
+        console = Console()
+        console.print(f'Generated data saved to "{output_file}"')
 
 if __name__ == "__main__":
     app()
