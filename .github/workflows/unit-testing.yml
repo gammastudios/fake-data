@@ -22,7 +22,7 @@ on:
 jobs:
   style-check:
     name: Linting & Formating
-    runs-on: ubutnu-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11"]
