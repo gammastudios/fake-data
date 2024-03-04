@@ -34,6 +34,9 @@ class MetadataCache:
         """
 
         try:
+
+
+
             cols_str = ", ".join(f"{c['name']} {c['type']}" for c in columns)
             sttmt = f"CREATE TABLE {table_name} ({cols_str})"
         except KeyError as e:

@@ -30,9 +30,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          cache: "poetry"
       - name: Configure working environment
         run: |
             pip install poetry
@@ -43,3 +44,25 @@ jobs:
       - name: formatting - ruff
         run: |
             poetry run make format-check
+
+  unit-test:
+    name: Unit Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]  
+      
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "poetry"
+      - name: Configure working environment
+        run: |
+            pip install poetry
+            poetry install
+      - name: unit-test
+        run: |
+            poetry run make unit-test
