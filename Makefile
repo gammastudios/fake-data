@@ -1,4 +1,7 @@
 
+
+PYTHON_MATRIX_VERSION ?= local
+
 .PHONY: style-check format-check unit-test
 
 style-check:
@@ -9,4 +12,4 @@ format-check:
 	ruff format --check fake_data/ tests/
 
 unit-test:
-	pytest --junitxml=junit/test-results.xml --cov=fake_data --cov-report=xml --cov-report=html
+	pytest --junitxml=junit/test-$(PYTHON_MATRIX_VERSION)-results.xml --cov=fake_data --cov-report=xml --cov-report=html
