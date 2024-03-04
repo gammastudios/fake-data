@@ -29,13 +29,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Serup Python ${{ matrix.python-version }}
+      - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Configure working environment
         run: |
-            pip install -y poetry
+            pip install poetry
             poetry install
       - name: linting - ruff
         run: |
