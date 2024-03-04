@@ -36,3 +36,6 @@ class TestMetadataCache:
         ]
         expected = "CREATE TABLE test_table (id int, name string)"
         assert mdc._create_table_sttmt(table_name, columns) == expected
+
+    def test_create_table(self):
+        pass
