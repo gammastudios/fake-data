@@ -12,12 +12,18 @@ on:
       - 'fake-data/**'
       - 'tests/**'
       - '.github/workflows/unit-testing.yml'
+      - 'Makefile'
+      - 'pyproject.toml'
+      - 'poetry.lock'
   workflow_dispatch:
   push:
     paths:
       - 'fake-data/**'
       - 'tests/**'
       - '.github/workflows/unit-testing.yml'
+      - 'Makefile'
+      - 'pyproject.toml'
+      - 'poetry.lock'
 
 jobs:
   style-check:
