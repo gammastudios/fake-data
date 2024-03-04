@@ -62,7 +62,7 @@ jobs:
       - name: Configure working environment
         run: poetry install
       - name: unit-test
-        run: poetry run PYTHON_MATRIX_VERSION=${{ matrix.python-version }} make unit-test
+        run: PYTHON_MATRIX_VERSION=${{ matrix.python-version }} poetry run make unit-test
       - name: Upload pytest test results
         uses: actions/upload-artifact@v4
         with:
