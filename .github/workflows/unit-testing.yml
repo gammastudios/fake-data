@@ -29,21 +29,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Install poetry
+        run: pipx install poetry
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: "poetry"
       - name: Configure working environment
-        run: |
-            pip install poetry
-            poetry install
+        run: poetry install
       - name: style - ruff
-        run: |
-            poetry run make style-check
+        run: poetry run make style-check
       - name: formatting - ruff
-        run: |
-            poetry run make format-check
+        run: poetry run make format-check
 
   unit-test:
     name: Unit Test
@@ -54,15 +52,14 @@ jobs:
       
     steps:
       - uses: actions/checkout@v4
+      - name: Install poetry
+        run: pipx install poetry
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: "poetry"
       - name: Configure working environment
-        run: |
-            pip install poetry
-            poetry install
+        run: poetry install
       - name: unit-test
-        run: |
-            poetry run make unit-test
+        run: poetry run make unit-test
