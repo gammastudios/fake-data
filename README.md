@@ -26,3 +26,13 @@ poetry shell
 generate-fake-data
 ```
 
+
+# Fake Data Generation
+Fake data sets are generated using the following sequence:
+* parse schema definitions, including PK/FK rels/constraints
+* create duckDB table objects
+* get the record cardinality information
+* populate record PK and attribute values - skip FK values
+* update PK/FK relationships
+* export to csv
+* use a `.fake_data_cache/` to hold duckDB objects

@@ -1,0 +1,42 @@
+---
+name: fake-data - Unit Test + Linting
+run-name: ${{ github.workflow }} - ${{ github.ref_name }}
+
+# based on GitHub Actions python example wortkflow
+# https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+on:
+  pull_request:
+    types: [ready_for_review]
+    paths:
+      - 'fake-data/**'
+      - 'tests/**'
+      - '.github/workflows/unit-testing.yml'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'fake-data/**'
+      - 'tests/**'
+      - '.github/workflows/unit-testing.yml'
+
+jobs:
+  style-check:
+    name: Linting & Formating
+    runs-on: ubutnu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Serup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Configure working environment
+        run: |
+            pip install -y poetry
+            poetry install
+      - name: linting - ruff
+        run: |
+            poetry run ruff check --statistics fake_data/ tests/

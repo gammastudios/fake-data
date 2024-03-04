@@ -1,15 +1,33 @@
 import csv
+from datetime import datetime, timedelta
 from faker import Faker
 from faker.providers import BaseProvider
+import os
 import pandas as pd
 from rich.console import Console
 from rich.progress import track
 import typer
 from typing import List
-from datetime import datetime, timedelta
-import os
 
-app = typer.Typer()
+from fake_data import VERSION
+from fake_data.metadata import commands as metadata_commands
+
+
+# set env var when running via CICD to enable colorised ouput
+ci_env_var = 'FAKE_DATA_CI'
+force_terminal = True if ci_env_var in os.environ else False
+console = Console(force_terminal=force_terminal)
+console_err = Console(force_terminal=force_terminal, stderr=True)
+
+app = typer.Typer(no_args_is_help=True)
+app.add_typer(metadata_commands.app, name="metadata", short_help="manage fake-data metadata", no_args_is_help=True)
+
+@app.command(name='version')
+def version():
+    """
+    Print the version of the fake-data package.
+    """
+    typer.echo(VERSION)
 
 def load_reference_data(reference_file):
     df = pd.read_csv(reference_file)
@@ -88,11 +106,12 @@ def generate_fake_data(field_name: str, field_type: str, fake: Faker) -> any:
 # customer_account needs to go first here, bc of the FK relationship so
 # id's in customer_account need to be created first, then referenced in customer
 # TODO: determine dependencies when generating fake-data between FK and PK
-@app.command()
+@app.command("generate-data")
 def generate_data(metadata_csvs: List[str] = typer.Option(["customer_account.csv","customer.csv"], help="List of metadata CSV files to process"),
                   output_dir: str = "output", 
                   rows: int = 100, 
-                  seed: int = None):
+                  seed: int = None,
+                  cache_dir: str = typer.Option("./fake_data_cache", help="fake data working cache directory", envvar="FAKE_DATA_CACHE_DIR")):
     """
     Generate fake data for multiple metadata CSV files.
 
