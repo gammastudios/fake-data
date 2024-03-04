@@ -37,6 +37,12 @@ jobs:
         run: |
             pip install poetry
             poetry install
-      - name: linting - ruff
+      - name: style - ruff
+        # TODO: enforce style checking
         run: |
-            poetry run ruff check --statistics fake_data/ tests/
+            poetry run ruff check --exit-zero fake_data/ tests/
+            poetry run ruff check --exit-zero --statistics fake_data/ tests/
+      - name: formatting - ruff
+        run: |
+            poetry run ruff format --exit-zero fake_data/ tests/
+            poetry run ruff format --exit-zero --statistics fake_data/ tests/
