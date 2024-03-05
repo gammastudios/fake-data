@@ -7,19 +7,36 @@ import pandas as pd
 from rich.console import Console
 from rich.progress import track
 import typer
+from typer import Context
 from typing import List
+from typing_extensions import Annotated
 
 from fake_data import VERSION
 from fake_data.metadata import commands as metadata_commands
 
 
 # set env var when running via CICD to enable colorised ouput
-ci_env_var = "FAKE_DATA_CI"
+ci_env_var = "CI"
 force_terminal = True if ci_env_var in os.environ else False
 console = Console(force_terminal=force_terminal)
 console_err = Console(force_terminal=force_terminal, stderr=True)
 
-app = typer.Typer(no_args_is_help=True)
+
+def global_opts_callback(
+    ctx: Context,
+    metadata_cache_dir: Annotated[
+        str, typer.Option(..., help="fake-data metadata cache directory", envvar="FAKE_DATA_CACHE_DIR")
+    ] = ".fake_data_cache",
+):
+    # ensure the cache directory exists
+    os.makedirs(metadata_cache_dir, exist_ok=True)
+
+    # add to the context
+    ctx.ensure_object(dict)
+    ctx.obj["cache_dir"] = metadata_cache_dir
+
+
+app = typer.Typer(no_args_is_help=True, callback=global_opts_callback)
 app.add_typer(metadata_commands.app, name="metadata", short_help="manage fake-data metadata", no_args_is_help=True)
 
 

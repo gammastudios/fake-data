@@ -37,5 +37,34 @@ class TestMetadataCache:
         expected = "CREATE TABLE test_table (id int, name string)"
         assert mdc._create_table_sttmt(table_name, columns) == expected
 
-    def test_create_table(self):
-        pass
+    @pytest.mark.parametrize(
+        "table_name,columns",
+        [
+            (
+                "test_table",
+                [
+                    {"name": "id", "type": "int"},
+                    {"name": "name", "type": "string"},
+                ],
+            ),
+            (
+                "test_varchar_table",
+                [
+                    {"name": "id", "type": "int"},
+                    {"name": "attr_a", "type": "varchar"},
+                ],
+            ),
+        ],
+    )
+    def test_create_table(self, tmp_cache_dir, table_name, columns):
+        # using the tmp cache dir ensures a clean db on each test case
+        mdc = MetadataCache(metadata_cache_dir=tmp_cache_dir)
+
+        mdc.create_table(table_name, columns)
+
+        assert table_name in mdc.tables
+
+        result = mdc.db.execute(f"SELECT * FROM {table_name}")
+        column_names = [column[0] for column in result.description]
+        expected_column_names = [column["name"] for column in columns]
+        assert column_names == expected_column_names
