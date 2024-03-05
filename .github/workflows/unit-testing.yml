@@ -1,6 +1,5 @@
 ---
-name: :test_tube: fake-data - Unit Test + Linting
-run-name: ${{ github.workflow }} - ${{ github.ref_name }}
+name: 🧪 fake-data - Unit Test + Linting
 
 # based on GitHub Actions python example wortkflow
 # https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
@@ -69,7 +68,7 @@ jobs:
         run: poetry install
       - name: unit-test
         run: PYTHON_MATRIX_VERSION=${{ matrix.python-version }} poetry run make unit-test
-      - name: Unit Test Coverage Report
+      - name: czUnit Test Coverage Report
         run: |
             poetry run pytest --cov=./fake_data --cov-report=term-missing
             echo "<details><summary>Unit Test Coverage Report</summary>" >> $GITHUB_STEP_SUMMARY
