@@ -69,10 +69,11 @@ jobs:
         run: poetry install
       - name: unit-test
         run: PYTHON_MATRIX_VERSION=${{ matrix.python-version }} poetry run make unit-test
-      - name: Upload pytest test results
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-results-${{ matrix.python-version }}
-          path: junit/test-results-${{ matrix.python-version }}.xml
-        # Use always() to always run this step to publish test results when there are test failures
-        if: ${{ always() }}
+      - name: Unit Test Coverage Report
+        run: |
+            poetry run pytest --cov=./fake_data --cov-report=term-missing
+            echo "<details><summary>Unit Test Coverage Report</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GUTHUB_STEP_SUMMARY
+            poetry run coverage report --format markdown --skip-empty >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+

@@ -12,4 +12,4 @@ format-check:
 	ruff format --check fake_data/ tests/
 
 unit-test:
-	pytest --junitxml=junit/test-results-$(PYTHON_MATRIX_VERSION).xml --cov=fake_data --cov-report=xml --cov-report=html
+	pytest ./tests
