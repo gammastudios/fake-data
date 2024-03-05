@@ -73,7 +73,7 @@ jobs:
         run: |
             poetry run pytest --cov=./fake_data --cov-report=term-missing
             echo "<details><summary>Unit Test Coverage Report</summary>" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GUTHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
             poetry run coverage report --format markdown --skip-empty >> $GITHUB_STEP_SUMMARY
             echo "</details>" >> $GITHUB_STEP_SUMMARY
 
