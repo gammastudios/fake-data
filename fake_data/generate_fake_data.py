@@ -33,7 +33,7 @@ def global_opts_callback(
 
     # add to the context
     ctx.ensure_object(dict)
-    ctx.obj["cache_dir"] = metadata_cache_dir
+    ctx.obj["metadata_cache_dir"] = metadata_cache_dir
 
 
 app = typer.Typer(no_args_is_help=True, callback=global_opts_callback)

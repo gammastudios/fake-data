@@ -11,6 +11,7 @@ class MetadataCache:
     def __init__(self, metadata_cache_dir: str = ".fake_data_cache", control_tables_prefix="meta_") -> None:
         # create the cache dir if it does not exist
         self.metadata_cache_dir = metadata_cache_dir
+        self.control_tables_prefix = control_tables_prefix
 
         # ensure the cache directory exists
         os.makedirs(metadata_cache_dir, exist_ok=True)
@@ -19,10 +20,12 @@ class MetadataCache:
         self.db = duckdb.connect(database=os.path.join(self.metadata_cache_dir, "fake_data.db"))
 
         # Query duckDB for a list of tables
-        all_tables = self.db.query("select table_name from information_schema.tables").fetchdf().table_name.tolist()
-        # remove the internal fake-data metadata control tables, e.g. starts with "meta_"
-        self.control_tables_prefix = control_tables_prefix
-        self.fake_tables = [t for t in all_tables if not t.startswith(self.control_tables_prefix)]
+        fake_tables_sql = f"""
+            select table_name
+            from information_schema.tables
+            where table_name not like '{self.control_tables_prefix}%'
+            """
+        self.fake_tables = self.db.query(fake_tables_sql).fetchdf().table_name.tolist()
 
     def create_table(self, table_name: str, columns: List[dict]) -> None:
         """
@@ -61,7 +64,42 @@ class MetadataCache:
 
         try:
             cols_str = ", ".join(f"{c['name']} {c['type']}" for c in columns)
-            sttmt = f"CREATE TABLE {table_name} ({cols_str})"
+            sttmt = f"CREATE TABLE IF NOT EXISTS {table_name} ({cols_str})"
         except KeyError as e:
             raise ValueError(f"Column definition missing key: {e}")
         return sttmt
+
+    def get_fake_tables(self) -> List[str]:
+        """
+        Get the list of fake tables.
+
+        Returns:
+            List[str]: List of fake table names.
+        """
+        return self.fake_tables
+
+    def drop_fake_tables(self) -> None:
+        """
+        Drop all fake tables.
+
+        Returns:
+            None
+        """
+        for table in self.fake_tables:
+            self.db.execute(f"DROP TABLE {table}")
+        self.fake_tables = []
+
+    def truncate_control_tables(self) -> None:
+        """
+        Truncate all metadata control tables.
+
+        Returns:
+            None
+        """
+        control_tables_sql = f"""
+            select table_name
+            from information_schema.tables
+            where table_name like '{self.control_tables_prefix}%'
+            """
+        for table in self.db.query(control_tables_sql).fetchdf().table_name.tolist():
+            self.db.execute(f"TRUNCATE TABLE {table}")
