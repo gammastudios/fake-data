@@ -8,15 +8,21 @@ class MetadataCache:
     Metadata cache for the fake data generator.
     """
 
-    def __init__(self, metadata_cache_dir: str = ".fake_data_cache") -> None:
+    def __init__(self, metadata_cache_dir: str = ".fake_data_cache", control_tables_prefix="meta_") -> None:
         # create the cache dir if it does not exist
         self.metadata_cache_dir = metadata_cache_dir
+
+        # ensure the cache directory exists
+        os.makedirs(metadata_cache_dir, exist_ok=True)
 
         # Connect to the database file
         self.db = duckdb.connect(database=os.path.join(self.metadata_cache_dir, "fake_data.db"))
 
-        # TODO load any existing metadata from the cache database
-        self.tables = []
+        # Query duckDB for a list of tables
+        all_tables = self.db.query("select table_name from information_schema.tables").fetchdf().table_name.tolist()
+        # remove the internal fake-data metadata control tables, e.g. starts with "meta_"
+        self.control_tables_prefix = control_tables_prefix
+        self.fake_tables = [t for t in all_tables if not t.startswith(self.control_tables_prefix)]
 
     def create_table(self, table_name: str, columns: List[dict]) -> None:
         """
@@ -34,7 +40,7 @@ class MetadataCache:
         sttmt = self._create_table_sttmt(table_name, columns)
         try:
             self.db.execute(sttmt)
-            self.tables.append(table_name)
+            self.fake_tables.append(table_name)
         except duckdb.duckdb.ParserException as e:
             print(f"Error creating table {table_name}: {e}")
             print(f"Statement: {sttmt}")

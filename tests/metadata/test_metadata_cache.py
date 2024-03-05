@@ -62,7 +62,7 @@ class TestMetadataCache:
 
         mdc.create_table(table_name, columns)
 
-        assert table_name in mdc.tables
+        assert table_name in mdc.fake_tables
 
         result = mdc.db.execute(f"SELECT * FROM {table_name}")
         column_names = [column[0] for column in result.description]

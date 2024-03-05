@@ -10,14 +10,27 @@ console_err = Console(force_terminal=force_terminal, stderr=True)
 app = Typer(no_args_is_help=True)
 
 
+@app.command(name="reset")
+def metadata_reset():
+    """
+    Erase all fake-data data and tables from the metadata cache.
+    """
+    raise NotImplementedError("Not implemented yet")
+
+
 @app.command("update")
 def metadata_update():
+    """
+    Update the metadata cache with additional data definitions.
+    """
     raise NotImplementedError("Not implemented yet")
 
 
 @app.command("refresh")
 def metadata_refresh():
-    pass
+    """
+    Drops all data and tables in the metadata cache and recreates them based on the supplied data definitions.
+    """
 
 
 @app.command("ls")
