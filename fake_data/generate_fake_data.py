@@ -14,7 +14,6 @@ from typing_extensions import Annotated
 from fake_data import VERSION
 from fake_data.metadata import commands as metadata_commands
 
-import duckdb
 
 # set env var when running via CICD to enable colorised ouput
 ci_env_var = "CI"
@@ -125,22 +124,6 @@ def generate_fake_data(field_name: str, field_type: str, fake: Faker) -> any:
     else:
         return -1
 
-def create_table_for_metadata(metadata, conn):
-    # Assuming metadata is a list of dictionaries with 'attribute_name' and 'data_type'
-    create_table_query = "CREATE TABLE data ("
-    create_table_query += ", ".join([f"{meta['attribute_name']} {meta['data_type']}" for meta in metadata])
-    create_table_query += ")"
-    conn.execute(create_table_query)
-
-def insert_data(row, conn):
-    columns = ', '.join(row.keys())
-    placeholders = ', '.join(['?' for _ in row])
-    insert_query = f"INSERT INTO data ({columns}) VALUES ({placeholders})"
-    conn.execute(insert_query, list(row.values()))
-
-def export_table_to_csv(output_file, conn):
-    export_query = f"COPY data TO '{output_file}' (FORMAT 'csv', HEADER)"
-    conn.execute(export_query)
 
 # customer_account needs to go first here, bc of the FK relationship so
 # id's in customer_account need to be created first, then referenced in customer
@@ -166,11 +149,6 @@ def generate_data(
     fake = Faker("en_AU")
     fake.add_provider(FinanceProvider)
     fake.add_provider(TxnDatetimeProvider)
-
-    # string interpolation and {cache_dir} not playing nice, hardcoding for now
-    database = '.fake_data_cache/fake-data.duckdb'
-    # Connect to a DuckDB database file. If it doesn't exist, it will be created.
-    conn = duckdb.connect(database=database, read_only=False)
 
     fk_pool = {}
 
@@ -205,8 +183,6 @@ def generate_data(
 
         console = Console()
         console.print(f'Generated data saved to "{output_file}"')
-    
-    conn.close()
 
 
 if __name__ == "__main__":
