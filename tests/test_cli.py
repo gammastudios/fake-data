@@ -28,7 +28,10 @@ def test_metadata_reset(monkeypatch, tmp_cache_dir, test_metadata_cache):
 
     result = runner.invoke(app, ["metadata", "reset"])
     assert result.exit_code == 0
-    assert re.match(r"^Dropping \d+ existing fake table\(s\).*$", result.stdout)
+
+    result = runner.invoke(app, ["metadata", "ls"])
+    assert result.exit_code == 0
+    assert result.stdout == ""
 
 
 def test_metadata_refresh(monkeypatch, tmp_cache_dir, test_metadata_cache, customer_csv_file):
