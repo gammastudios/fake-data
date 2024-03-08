@@ -23,10 +23,10 @@ class TestMetadataCache:
         mdc = MetadataCache()
         table_name = "test_table"
         columns = [
-            {"attribute_name": "id", "data_type": "int"},
-            {"attribute_name": "name", "data_type": "string"},
+            {"attribute_name": "id", "data_type": "int", "key_type": "PK"},
+            {"attribute_name": "name", "data_type": "string", "key_type": None},
         ]
-        expected = "CREATE TABLE IF NOT EXISTS test_table (id int, name string)"
+        expected = "CREATE TABLE IF NOT EXISTS test_table (id int PRIMARY KEY, name string)"
         assert mdc._create_table_sttmt(table_name, columns) == expected
 
     @pytest.mark.parametrize(
@@ -35,15 +35,15 @@ class TestMetadataCache:
             (
                 "test_table",
                 [
-                    {"attribute_name": "id", "data_type": "int"},
-                    {"attribute_name": "name", "data_type": "string"},
+                    {"attribute_name": "id", "data_type": "int", "key_type": None},
+                    {"attribute_name": "name", "data_type": "string", "key_type": None},
                 ],
             ),
             (
                 "test_varchar_table",
                 [
-                    {"attribute_name": "id", "data_type": "int"},
-                    {"attribute_name": "attr_a", "data_type": "varchar"},
+                    {"attribute_name": "id", "data_type": "int", "key_type": "PK"},
+                    {"attribute_name": "attr_a", "data_type": "varchar", "key_type": None},
                 ],
             ),
         ],
@@ -67,8 +67,8 @@ class TestMetadataCache:
 
         table_name = "test_table"
         columns = [
-            {"attribute_name": "id", "data_type": "int"},
-            {"attribute_name": "name", "data_type": "string"},
+            {"attribute_name": "id", "data_type": "int", "key_type": "PK"},
+            {"attribute_name": "name", "data_type": "string", "key_type": None},
         ]
         mdc.create_table(table_name, columns)
         assert mdc.fake_tables == mdc.get_fake_tables()

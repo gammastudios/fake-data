@@ -57,13 +57,21 @@ class MetadataCache:
             columns (List[dict]): columns of the table.  Each column is a dictionary at least with the following keys:
                 - attribute_name: name of the column.
                 - data_type: type of the column.
+                - key_type: type of the key, e.g. PK or FK (optional).
 
         Returns:
             (str): DDL string for the create table statement.
         """
 
         try:
-            cols_str = ", ".join(f"{c['attribute_name']} {c['data_type']}" for c in columns)
+            col_strs = []
+            for c in columns:
+                if c["key_type"] == "PK":
+                    col_strs.append(f"{c['attribute_name']} {c['data_type']} PRIMARY KEY")
+                else:
+                    col_strs.append(f"{c['attribute_name']} {c['data_type']}")
+
+            cols_str = ", ".join(c for c in col_strs)
             sttmt = f"CREATE TABLE IF NOT EXISTS {table_name} ({cols_str})"
         except KeyError as e:
             raise ValueError(f"Column definition missing key: {e}")

@@ -24,18 +24,18 @@ def test_metadata_cache(tmp_cache_dir):
     mdc.create_table(
         "customer",
         [
-            {"attribute_name": "id", "data_type": "int"},
-            {"attribute_name": "name", "data_type": "string"},
-            {"attribute_name": "age", "data_type": "int"},
-            {"attribute_name": "account_id", "data_type": "int"},
+            {"attribute_name": "id", "data_type": "int", "key_type": "PK"},
+            {"attribute_name": "name", "data_type": "string", "key_type": None},
+            {"attribute_name": "age", "data_type": "int", "key_type": None},
+            {"attribute_name": "account_id", "data_type": "int", "key_type": None},
         ],
     )
     mdc.create_table(
         "customer_account",
         [
-            {"attribute_name": "id", "data_type": "int"},
-            {"attribute_name": "name", "data_type": "string"},
-            {"attribute_name": "balance", "data_type": "float"},
+            {"attribute_name": "id", "data_type": "int", "key_type": "PK"},
+            {"attribute_name": "name", "data_type": "string", "key_type": None},
+            {"attribute_name": "balance", "data_type": "float", "key_type": None},
         ],
     )
 
