@@ -1,8 +1,10 @@
 import os
-from typer import Context, Typer
 from rich.console import Console
+from typer import Argument, Context, Typer
+from typing import List
 
 from fake_data.metadata.metadata_cache import MetadataCache
+from fake_data.metadata.metadata_csv_parser import MetadataCsvParser
 
 ci_env_var = "CI"
 force_terminal = True if ci_env_var in os.environ else False
@@ -42,9 +44,11 @@ def metadata_update(ctx: Context):
 
 
 @app.command("refresh")
-def metadata_refresh(ctx: Context):
+def metadata_refresh(ctx: Context, metadata_filenames: List[str] = Argument(..., help="List of metadata files to process")):
     """
     Drops all data and tables in the metadata cache and recreates them based on the supplied data definitions.
+
+    If the filename ends in csv, load as a csv file.
     """
     metadata_cache_dir = ctx.obj["metadata_cache_dir"]
     mdc = MetadataCache(metadata_cache_dir=metadata_cache_dir)
@@ -58,12 +62,14 @@ def metadata_refresh(ctx: Context):
 
     mdc.truncate_control_tables()
 
-    # table_name = "test_table"
-    # colums = [
-    #     {"name": "id", "type": "int"},
-    #     {"name": "name", "type": "string"},
-    # ]
-    # mdc.create_table(table_name=table_name, columns=colums)
+    for filename in metadata_filenames:
+        table_name = os.path.splitext(os.path.basename(filename))[0]
+        if filename.endswith(".csv"):
+            parser = MetadataCsvParser()
+            table_definition = parser.read_csv(filename)
+
+        mdc.create_table(table_name, table_definition)
+        console.print(f"Created fake table for {table_name}")
 
 
 @app.command("ls")

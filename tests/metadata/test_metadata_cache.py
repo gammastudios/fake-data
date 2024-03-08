@@ -1,14 +1,6 @@
-import tempfile
-
 from fake_data.metadata.metadata_cache import MetadataCache
 import os
 import pytest
-
-
-@pytest.fixture(scope="session")
-def tmp_cache_dir():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        yield temp_dir
 
 
 class TestMetadataCache:
@@ -31,10 +23,10 @@ class TestMetadataCache:
         mdc = MetadataCache()
         table_name = "test_table"
         columns = [
-            {"name": "id", "type": "int"},
-            {"name": "name", "type": "string"},
+            {"attribute_name": "id", "data_type": "int"},
+            {"attribute_name": "name", "data_type": "string"},
         ]
-        expected = "CREATE TABLE test_table (id int, name string)"
+        expected = "CREATE TABLE IF NOT EXISTS test_table (id int, name string)"
         assert mdc._create_table_sttmt(table_name, columns) == expected
 
     @pytest.mark.parametrize(
@@ -43,15 +35,15 @@ class TestMetadataCache:
             (
                 "test_table",
                 [
-                    {"name": "id", "type": "int"},
-                    {"name": "name", "type": "string"},
+                    {"attribute_name": "id", "data_type": "int"},
+                    {"attribute_name": "name", "data_type": "string"},
                 ],
             ),
             (
                 "test_varchar_table",
                 [
-                    {"name": "id", "type": "int"},
-                    {"name": "attr_a", "type": "varchar"},
+                    {"attribute_name": "id", "data_type": "int"},
+                    {"attribute_name": "attr_a", "data_type": "varchar"},
                 ],
             ),
         ],
@@ -65,6 +57,19 @@ class TestMetadataCache:
         assert table_name in mdc.fake_tables
 
         result = mdc.db.execute(f"SELECT * FROM {table_name}")
-        column_names = [column[0] for column in result.description]
-        expected_column_names = [column["name"] for column in columns]
-        assert column_names == expected_column_names
+        act_column_names = [column[0] for column in result.description]
+        expected_column_names = [column["attribute_name"] for column in columns]
+        assert act_column_names == expected_column_names
+
+    def test_get_fake_tables(self, test_metadata_cache):
+        mdc = test_metadata_cache
+        assert mdc.fake_tables == mdc.get_fake_tables()
+
+        table_name = "test_table"
+        columns = [
+            {"attribute_name": "id", "data_type": "int"},
+            {"attribute_name": "name", "data_type": "string"},
+        ]
+        mdc.create_table(table_name, columns)
+        assert mdc.fake_tables == mdc.get_fake_tables()
+        assert "test_table" in mdc.fake_tables

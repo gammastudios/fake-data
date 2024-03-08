@@ -1,6 +1,6 @@
-attribute_name,data_type,key_type,reference_file,reference_attribute, relationship
+attribute_name,data_type,key_type,reference_entity,reference_attribute, relationship
 name,string,,,,
 age,int,,,,
 hire_date,date,,,,
 id,string,PK,,,
-customer_account_id,account,FK,customer_account.csv,id,1:1
+customer_account_id,int,FK,customer_account,id,1:1
