@@ -1,0 +1,78 @@
+---
+name: 🧪 fake-data - Unit Test + Linting
+
+# based on GitHub Actions python example wortkflow
+# https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+on:
+  pull_request:
+    types: [ready_for_review]
+    paths:
+      - 'fake-data/**'
+      - 'tests/**'
+      - '.github/workflows/unit-testing.yml'
+      - 'Makefile'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'fake-data/**'
+      - 'tests/**'
+      - '.github/workflows/unit-testing.yml'
+      - 'Makefile'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+
+jobs:
+  style-check:
+    name: Linting & Formating
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install poetry
+        run: pipx install poetry
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "poetry"
+      - name: Configure working environment
+        run: poetry install
+      - name: style - ruff
+        run: poetry run make style-check
+      - name: formatting - ruff
+        run: poetry run make format-check
+
+  unit-test:
+    name: Unit Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]  
+      
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install poetry
+        run: pipx install poetry
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "poetry"
+      - name: Configure working environment
+        run: poetry install
+      - name: unit-test
+        run: PYTHON_MATRIX_VERSION=${{ matrix.python-version }} poetry run make unit-test
+      - name: czUnit Test Coverage Report
+        run: |
+            poetry run pytest --cov=./fake_data --cov-report=term-missing
+            echo "<details><summary>Unit Test Coverage Report</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            poetry run coverage report --format markdown --skip-empty >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+
