@@ -2,7 +2,7 @@
 
 PYTHON_MATRIX_VERSION ?= local
 
-.PHONY: style-check format-check unit-test
+.PHONY: style-check format-check unit-test unit-test-coverage
 
 style-check:
 	ruff check --output-format=github fake_data/ tests/
@@ -13,3 +13,7 @@ format-check:
 
 unit-test:
 	pytest ./tests
+
+unit-test-coverage:
+	pytest --cov=./fake_data --cov-report=term-missing
+	# coverage report --skip-empty 
