@@ -1,0 +1,118 @@
+dataContractSpecification: 0.9.2
+id: urn:datacontract:customer:customer-latest
+info:
+  title: Customer
+  version: 1.0.0
+  description: |
+    Data to describer a customer for our product
+    and all their related information
+  owner: fake-data
+  contact:
+    name: fake-data
+    url: https://github.com/gammastudios/fake-data
+servers:
+  production:
+    type: local
+    path: output/customer_output.csv
+    format: csv  
+terms:
+  usage: >
+    Can be used under the license terms to generate fake data for your project
+  limitations: >
+    Not suitable for real-time use cases.
+    Data may not be used to identify individual customers.
+models:
+  customer:
+    description: One record per customer. All customers have a customer_account
+    type: table
+    fields:
+      id:
+        $ref: '#/definitions/customer_id'
+        required: true
+        unique: true
+        pii: yes
+        minLength: 10
+        maxLength: 20
+      name:
+        description: name of a customer
+        type: string
+        required: true
+        pii: yes
+      age:
+        description: age of customer
+        type: number
+        required: true
+        pii: yes
+      onboard_date:
+        description: when customer was onboarded into systems
+        type: date
+        format: "%Y-%m-%d %H:%M:%S"
+        pii: no
+      customer_account_id:
+        $ref: '#/definitions/customer_account_id'
+  customer_account:
+    description: Account details for a customer
+    type: table
+    fields:
+      id:
+        $ref: '#/definitions/customer_account_id'
+      Name:
+        description: name of the account
+        type: string
+      Organisation_Classification:
+        description: organisation in which the account belonds to
+        type: string
+      ANZSIC_Code:
+        description: Standard Industrial Classification
+        type: string
+      ShippingStreet:
+        description: Street name only of customer
+        type: string
+      Mailing_Address_Line:
+        description: Full address of customer
+        type: string
+definitions:
+  customer_id:
+    domain: checkout
+    name: order_id
+    title: Order ID
+    type: text
+    format: uuid
+    description: An internal ID that identifies an order in the online shop.
+    example: 243c25e5-a081-43a9-aeab-6d5d5b6cb5e2
+    format: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89ABab][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$""
+    pii: true
+    classification: restricted
+  customer_account_id:
+    domain: inventory
+    name: ID of Customer Account
+    title: Customer Account ID
+    type: text
+    pattern: ^[A-Za-z0-9]{8,14}$
+    example: "96385074"
+    description: |
+      Every Customer has an account, and this is the ID of the
+      Customer Account
+examples:
+  - type: csv # csv, json, yaml, custom
+    model: customer
+    data: |- # expressed as string or inline yaml or via "$ref: data.csv"
+      "id","name","age","hire_date","customer_account_id"
+      "Nathaniel Sanchez","58,1994-06-26","voluptatem","30-21-27-40"
+      "Melissa Martinez","73,2014-01-24","impedit","20-27-38-12"
+      "Sara Smith","60,1993-11-22","tempora","13-28-24-10"
+  - type: csv
+    model: customer_account
+    data: |-
+      Name,Organisation_Classification_2__c,ANZSIC_Code__c,ShippingStreet,Mailing_Address_Line_2__c,id
+      Melissa Carpenter,aliquam,deserunt,corrupti,"03 Michelle Turn, Timothytown, ACT, 2920",suscipit
+      Christopher Sandoval,aliquid,temporibus,ea,"1/200 Robinson Causeway, Matthewport, NT, 2991",alias
+      Brandon Smith,velit,delectus,aperiam,"328/194 Munoz Link, Port Sarahside, ACT, 1048",pariatur
+quality:
+  type: SodaCL   # data quality check format: SodaCL, montecarlo, custom
+  specification: # expressed as string or inline yaml or via "$ref: checks.yaml"
+    checks for customer_output:
+      - row_count >= 90
+      - duplicate_count(id) = 0
+    checks for customer_account_output:
+      - row_count >= 5000

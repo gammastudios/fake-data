@@ -1,7 +1,7 @@
 attribute_name,data_type,key_type,reference_file,reference_attribute, relationship
-Name,string,,,
-Organisation_Classification_2__c,string,,,
-ANZSIC_Code__c,string,,,
-ShippingStreet,string,,,
-Mailing_Address_Line_2__c,string,,,
-id,string,PK,,
+id,string,PK,,,
+Name,string,,,,
+Organisation_Classification_2__c,string,,,,
+ANZSIC_Code__c,string,,,,
+ShippingStreet,string,,,,
+Mailing_Address_Line_2__c,string,,,,
