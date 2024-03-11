@@ -46,7 +46,7 @@ models:
       onboard_date:
         description: when customer was onboarded into systems
         type: date
-        format: YYYY-MM-DD
+        format: "%Y-%m-%d %H:%M:%S"
         pii: no
       customer_account_id:
         $ref: '#/definitions/customer_account_id'
@@ -80,18 +80,19 @@ definitions:
     format: uuid
     description: An internal ID that identifies an order in the online shop.
     example: 243c25e5-a081-43a9-aeab-6d5d5b6cb5e2
+    format: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89ABab][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$""
     pii: true
     classification: restricted
   customer_account_id:
     domain: inventory
-    name: sku
-    title: Stock Keeping Unit
+    name: ID of Customer Account
+    title: Customer Account ID
     type: text
     pattern: ^[A-Za-z0-9]{8,14}$
     example: "96385074"
     description: |
-      A Stock Keeping Unit (SKU) is an internal unique identifier for an article. 
-      It is typically associated with an article's barcode, such as the EAN/GTIN.
+      Every Customer has an account, and this is the ID of the
+      Customer Account
 examples:
   - type: csv # csv, json, yaml, custom
     model: customer
