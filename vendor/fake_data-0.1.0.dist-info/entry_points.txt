@@ -1,0 +1,4 @@
+[console_scripts]
+fake-my-data=fake_data.generate_fake_data:app
+generate-fake-data=fake_data.generate_fake_data:app
+
