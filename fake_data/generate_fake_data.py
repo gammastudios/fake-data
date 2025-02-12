@@ -161,7 +161,9 @@ def generate_fake_data(field_name: str, field_type: str, fake: Faker, nullable: 
     elif field_type == "timestamp":
         return fake.txn_datetime()
     elif field_type == "string":
-        if "policy_number" in field_name.lower():
+        if field_name.lower() == "change_type":
+            return fake.random_element(elements=("U", "I", "D"))
+        elif "policy_number" in field_name.lower():
             return get_next_value('policy_number')
         elif "quote_number" in field_name.lower():
             return get_next_value('quote_number')
