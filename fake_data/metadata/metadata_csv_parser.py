@@ -37,24 +37,49 @@ class MetadataCsvParser:
         # Read the CSV with original column names
         metadata_df = pd.read_csv(csv_file)
         
-        # Map new column names to expected format
-        metadata_df = metadata_df.rename(columns={
-            'column_name': 'attribute_name',
-            'column_data_type': 'data_type'
-        })
+        # Map column names to expected format if needed
+        if 'attribute_name' not in metadata_df.columns and 'column_name' in metadata_df.columns:
+            metadata_df = metadata_df.rename(columns={'column_name': 'attribute_name'})
+        if 'data_type' not in metadata_df.columns and 'column_data_type' in metadata_df.columns:
+            metadata_df = metadata_df.rename(columns={'column_data_type': 'data_type'})
         
-        # Add required columns if they don't exist
-        if 'key_type' not in metadata_df.columns:
-            metadata_df['key_type'] = ''
-        if 'reference_entity' not in metadata_df.columns:
-            metadata_df['reference_entity'] = ''
-        if 'reference_attribute' not in metadata_df.columns:
-            metadata_df['reference_attribute'] = ''
-        if 'relationship' not in metadata_df.columns:
-            metadata_df['relationship'] = ''
+        # Initialize key relationship columns
+        metadata_df['key_type'] = ''
+        metadata_df['reference_entity'] = ''
+        metadata_df['reference_attribute'] = ''
+        metadata_df['relationship'] = ''
+
+        # Ensure we have source_name and table_name
+        if 'source_name' not in metadata_df.columns or 'table_name' not in metadata_df.columns:
+            raise ValueError("CSV must contain 'source_name' and 'table_name' columns")
+
+        # Create a unique table identifier combining source and table name
+        metadata_df['full_table_name'] = metadata_df['source_name'] + '.' + metadata_df['table_name']
+
+        # Determine which column name to use for grouping
+        name_col = 'attribute_name' if 'attribute_name' in metadata_df.columns else 'column_name'
+        
+        # Group by column name to find relationships
+        column_groups = metadata_df.groupby(name_col)
+        for col_name, group in column_groups:
+            if len(group) > 1:  # Column appears in multiple tables
+                # Find the first occurrence as primary key
+                first_table = group.iloc[0]['full_table_name']
+                
+                # Mark as PK in first table
+                metadata_df.loc[(metadata_df['full_table_name'] == first_table) & 
+                              (metadata_df[name_col] == col_name), 'key_type'] = 'PK'
+                
+                # Mark other occurrences as foreign keys
+                fk_mask = (metadata_df['full_table_name'] != first_table) & \
+                         (metadata_df[name_col] == col_name)
+                metadata_df.loc[fk_mask, 'key_type'] = 'FK'
+                metadata_df.loc[fk_mask, 'reference_entity'] = first_table.split('.')[1]  # Just use table name without source
+                metadata_df.loc[fk_mask, 'reference_attribute'] = col_name
+                metadata_df.loc[fk_mask, 'relationship'] = '1:N'  # Default cardinality
             
         # Convert data types to lowercase to match generate_fake_data expectations
-        metadata_df['data_type'] = metadata_df['data_type'].str.lower()
+        metadata_df['data_type'] = metadata_df['data_type'].str.lower() if 'data_type' in metadata_df.columns else metadata_df['column_data_type'].str.lower()
         
         # Add nullable information from column_data_mode
         metadata_df['nullable'] = metadata_df['column_data_mode'].apply(

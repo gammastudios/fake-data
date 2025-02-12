@@ -80,30 +80,79 @@ class FinanceProvider(BaseProvider):
         return formatted_account
 
 
-def build_fk_pools(metadata):
+def build_fk_pools(metadata_df, generated_data):
     """
-    Creates a dictionary of foreign key pools from metadata and previously generated CSV files.
+    Creates a dictionary of foreign key pools from metadata and previously generated data.
 
     Args:
-        metadata: A pandas DataFrame containing metadata definitions.
-        output_dir: The directory where generated CSV files containing primary keys are located.
+        metadata_df: A pandas DataFrame containing metadata definitions
+        generated_data: Dictionary storing generated data for each table
 
     Returns:
-        A dictionary where keys are foreign key attribute names and values are lists of valid
+        A dictionary where keys are (table_name, column_name) tuples and values are lists of valid
         primary key values to be used for generating data with referential integrity.
     """
     fk_pools = {}
-    for i, meta in metadata.iterrows():
-        if "key_type" in meta and meta["key_type"] == "FK":  # Only process if 'key_type' exists and is 'FK'
-            print(f"Row {i}: {meta}")  # Print the row causing the error
-
-            reference_file = meta["reference_file"]
-            fk_pools[meta["attribute_name"]] = load_reference_data(reference_file)
+    
+    # Determine which column name to use
+    name_col = 'attribute_name' if 'attribute_name' in metadata_df.columns else 'column_name'
+    
+    # Find all foreign key relationships
+    fk_rows = metadata_df[metadata_df['key_type'] == 'FK']
+    for _, fk_row in fk_rows.iterrows():
+        table_name = fk_row['table_name']
+        column_name = fk_row[name_col]
+        ref_table = fk_row['reference_entity']
+        
+        # Get the primary key values from the referenced table's generated data
+        if ref_table in generated_data:
+            pk_values = generated_data[ref_table][column_name].tolist()
+            fk_pools[(table_name, column_name)] = pk_values
+            
     return fk_pools
 
 
-def generate_fake_data(field_name: str, field_type: str, fake: Faker, nullable: bool = False) -> any:
-    # Handle nullable fields
+# Global pools for maintaining referential integrity
+shared_values = {
+    'policy_number': [],  # List to maintain order and uniqueness within tables
+    'quote_number': []
+}
+
+# Track current position in each shared value list for each table
+current_table_positions = {
+    'policy_number': 0,
+    'quote_number': 0
+}
+
+def initialize_shared_values(field_key: str, num_rows: int, fake: Faker):
+    """Initialize the shared value pool with unique values."""
+    if not shared_values[field_key]:  # Only initialize if empty
+        for _ in range(num_rows):
+            if "policy_number" in field_key:
+                value = f"POL-{fake.random_int(min=100000, max=999999)}"
+                while value in shared_values[field_key]:  # Ensure uniqueness
+                    value = f"POL-{fake.random_int(min=100000, max=999999)}"
+            elif "quote_number" in field_key:
+                value = f"QUO-{fake.random_int(min=100000, max=999999)}"
+                while value in shared_values[field_key]:  # Ensure uniqueness
+                    value = f"QUO-{fake.random_int(min=100000, max=999999)}"
+            shared_values[field_key].append(value)
+
+def get_next_value(field_name: str) -> str:
+    """Get the next value from the shared pool for the current table."""
+    field_key = field_name.lower()
+    
+    # Get next value and increment position
+    value = shared_values[field_key][current_table_positions[field_key]]
+    current_table_positions[field_key] = (current_table_positions[field_key] + 1) % len(shared_values[field_key])
+    return value
+
+def generate_fake_data(field_name: str, field_type: str, fake: Faker, nullable: bool = False, fk_value: any = None) -> any:
+    # If this is a foreign key field and we have a value, use it
+    if fk_value is not None:
+        return fk_value
+        
+    # Handle nullable fields (only for non-FK fields)
     if nullable and fake.random_int(min=0, max=100) < 20:  # 20% chance of NULL for nullable fields
         return None
         
@@ -113,9 +162,9 @@ def generate_fake_data(field_name: str, field_type: str, fake: Faker, nullable: 
         return fake.txn_datetime()
     elif field_type == "string":
         if "policy_number" in field_name.lower():
-            return f"POL-{fake.random_int(min=100000, max=999999)}"
+            return get_next_value('policy_number')
         elif "quote_number" in field_name.lower():
-            return f"QUO-{fake.random_int(min=100000, max=999999)}"
+            return get_next_value('quote_number')
         elif "name" in field_name.lower():
             if "brand" in field_name.lower():
                 return "IAG"
@@ -175,6 +224,9 @@ def generate_data(
     :param output_dir: Directory to save the generated output CSV files.
     :param rows: Number of data rows to generate per file. Default is 100.
     """
+    # Clear shared value pools at start of each generation
+    shared_values['policy_number'].clear()
+    shared_values['quote_number'].clear()
 
     fake = Faker("en_AU")
     fake.add_provider(FinanceProvider)
@@ -189,32 +241,70 @@ def generate_data(
         metadata_df = pd.read_csv(metadata_csv)
         table_groups = metadata_df.groupby(['source_name', 'table_name'])
 
-        for (source_name, table_name), group in table_groups:
-            data = []  # Reset data for each new table
-            console.print(f"Generating data for {source_name}.{table_name}")
+        # Store generated data for FK relationships
+        generated_data = {}
+        
+        # Process tables in order (PKs first, then FKs)
+        for pass_num in [1, 2]:  # Two passes: first for non-FK tables, then FK tables
+            for (source_name, table_name), group in table_groups:
+                # Skip FK tables in first pass and non-FK tables in second pass
+                has_fks = False
+                if 'key_type' in group.columns:
+                    has_fks = group['key_type'].eq('FK').any()
+                
+                if (pass_num == 1 and has_fks) or (pass_num == 2 and not has_fks):
+                    continue
+                
+                data = []  # Reset data for each new table
+                console.print(f"Generating data for {source_name}.{table_name}")
+                
+                # Reset positions for new table
+                current_table_positions['policy_number'] = 0
+                current_table_positions['quote_number'] = 0
+                
+                # Initialize shared pools if this is first table
+                initialize_shared_values('policy_number', rows, fake)
+                initialize_shared_values('quote_number', rows, fake)
+                
+                # Build FK pools if needed
+                fk_pools = build_fk_pools(metadata_df, generated_data) if pass_num == 2 else {}
+                
+                # Generate data rows with progress bar
+                for _ in track(range(rows), f"Generating data for {table_name}..."):
+                    row = {}
+                    for _, meta in group.iterrows():
+                        nullable = meta['column_data_mode'] == 'NULLABLE'
+                        
+                        # Determine which column name to use
+                        name_col = 'attribute_name' if 'attribute_name' in meta else 'column_name'
+                        type_col = 'data_type' if 'data_type' in meta else 'column_data_type'
+                        
+                        # Get FK value if this is a foreign key
+                        fk_value = None
+                        if 'key_type' in meta and meta['key_type'] == 'FK':
+                            pool_key = (table_name, meta[name_col])
+                            if pool_key in fk_pools and fk_pools[pool_key]:
+                                fk_value = fake.random_element(elements=fk_pools[pool_key])
+                        
+                        row[meta[name_col]] = generate_fake_data(
+                            meta[name_col],
+                            meta[type_col].lower(),
+                            fake,
+                            nullable,
+                            fk_value
+                        )
+                    data.append(row)
+                
+                # Convert to DataFrame and store for FK relationships
+                df = pd.DataFrame(data)
+                generated_data[table_name] = df
+                
+                # Output File Name - use source_name and table_name
+                output_file = os.path.join(output_dir, f"{source_name}_{table_name}.csv")
+                os.makedirs(output_dir, exist_ok=True)  # Create 'output' if it doesn't exist
+                df.to_csv(output_file, index=False)
 
-            # Generate data rows with progress bar
-            for _ in track(range(rows), "Generating data..."):
-                row = {}
-                for _, meta in group.iterrows():
-                    nullable = meta['column_data_mode'] == 'NULLABLE'
-                    row[meta["column_name"]] = generate_fake_data(
-                        meta["column_name"], 
-                        meta["column_data_type"].lower(), 
-                        fake,
-                        nullable
-                    )
-                data.append(row)
-
-            # Convert to DataFrame and save to CSV
-            df = pd.DataFrame(data)
-            
-            # Output File Name - use source_name and table_name
-            output_file = os.path.join(output_dir, f"{source_name}_{table_name}.csv")
-            os.makedirs(output_dir, exist_ok=True)  # Create 'output' if it doesn't exist
-            df.to_csv(output_file, index=False)
-
-            console.print(f'Generated data saved to "{output_file}"')
+                console.print(f'Generated data saved to "{output_file}"')
 
 
 if __name__ == "__main__":
