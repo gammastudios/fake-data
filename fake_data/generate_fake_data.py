@@ -9,6 +9,7 @@ from rich.progress import track
 import typer
 from typer import Context
 from typing import List
+import numpy as np
 from typing_extensions import Annotated
 
 from fake_data import VERSION
@@ -162,9 +163,16 @@ def generate_fake_data(field_name: str, field_type: str, fake: Faker, nullable: 
         return fake.txn_datetime()
     elif field_type == "string":
         if field_name.lower() == "change_type":
-            return fake.random_element(elements=("U", "I", "D"))
+            change_type = fake.random_element(elements=("U", "I", "D"))
+        else:
+            change_type = None
+        if field_name.lower() == "change_type":
+            return change_type
         elif "policy_number" in field_name.lower():
-            return get_next_value('policy_number')
+            if change_type == "U" and shared_values['policy_number']:
+                return fake.random_element(elements=shared_values['policy_number'])
+            else:
+                return get_next_value('policy_number')
         elif "quote_number" in field_name.lower():
             return get_next_value('quote_number')
         elif "name" in field_name.lower():
@@ -189,10 +197,7 @@ def generate_fake_data(field_name: str, field_type: str, fake: Faker, nullable: 
         else:
             return fake.word()
     elif field_type == "integer":
-        if "term_number" in field_name.lower():
-            return fake.random_int(min=1, max=10)
-        else:
-            return fake.random_int(min=0, max=99)
+        return int(fake.random_int(min=0, max=99))
     elif field_type == "numeric":
         if "amount" in field_name.lower() or "premium" in field_name.lower():
             return round(fake.random.uniform(100, 5000), 2)
@@ -297,10 +302,18 @@ def generate_data(
                         )
                     data.append(row)
                 
+                # Determine dtypes
+                dtypes = {}
+                for _, meta in group.iterrows():
+                    name_col = 'attribute_name' if 'attribute_name' in meta else 'column_name'
+                    type_col = 'data_type' if 'data_type' in meta else 'column_data_type'
+                if meta[type_col].lower() == 'integer':
+                    dtypes[meta[name_col]] = np.int64
+
                 # Convert to DataFrame and store for FK relationships
                 df = pd.DataFrame(data)
                 generated_data[table_name] = df
-                
+
                 # Output File Name - use source_name and table_name
                 output_file = os.path.join(output_dir, f"{source_name}_{table_name}.csv")
                 os.makedirs(output_dir, exist_ok=True)  # Create 'output' if it doesn't exist
