@@ -102,27 +102,57 @@ def build_fk_pools(metadata):
     return fk_pools
 
 
-def generate_fake_data(field_name: str, field_type: str, fake: Faker) -> any:
+def generate_fake_data(field_name: str, field_type: str, fake: Faker, nullable: bool = False) -> any:
+    # Handle nullable fields
+    if nullable and fake.random_int(min=0, max=100) < 20:  # 20% chance of NULL for nullable fields
+        return None
+        
     if field_type == "account":
         return fake.customer_account()
     elif field_type == "timestamp":
         return fake.txn_datetime()
     elif field_type == "string":
-        if "name" in field_name.lower():
-            return fake.name()
+        if "policy_number" in field_name.lower():
+            return f"POL-{fake.random_int(min=100000, max=999999)}"
+        elif "quote_number" in field_name.lower():
+            return f"QUO-{fake.random_int(min=100000, max=999999)}"
+        elif "name" in field_name.lower():
+            if "brand" in field_name.lower():
+                return "IAG"
+            elif "product" in field_name.lower():
+                return fake.random_element(elements=("Home", "Car", "Landlord"))
+            else:
+                return fake.name()
         elif "email" in field_name.lower():
             return fake.email()
-        elif "address" in field_name.lower():
+        elif "address" in field_name.lower() or "suburb" in field_name.lower():
             return fake.address().replace("\n", ", ")
+        elif "state" in field_name.lower():
+            return fake.random_element(elements=("NSW", "VIC", "QLD", "WA", "SA", "TAS", "NT", "ACT"))
+        elif "postal_code" in field_name.lower():
+            return fake.postcode()
+        elif "phone" in field_name.lower():
+            return fake.phone_number()
+        elif "status" in field_name.lower():
+            return fake.random_element(elements=("Bound", "Quoted", "Not Taken", "Withdrawn"))
         else:
             return fake.word()
-    elif field_type == "int":
-        return fake.random_int(min=0, max=99)
+    elif field_type == "integer":
+        if "term_number" in field_name.lower():
+            return fake.random_int(min=1, max=10)
+        else:
+            return fake.random_int(min=0, max=99)
+    elif field_type == "numeric":
+        if "amount" in field_name.lower() or "premium" in field_name.lower():
+            return round(fake.random.uniform(100, 5000), 2)
+        else:
+            return round(fake.random.uniform(0, 1000), 2)
     elif field_type == "date":
         return fake.date()
-    # You can extend this function to generate more specific data based on field_name or field_type
+    elif field_type == "boolean" or field_type == "bool":
+        return fake.boolean()
     else:
-        return -1
+        return None
 
 
 # customer_account needs to go first here, bc of the FK relationship so
@@ -131,7 +161,7 @@ def generate_fake_data(field_name: str, field_type: str, fake: Faker) -> any:
 @app.command("generate-data")
 def generate_data(
     metadata_csvs: List[str] = typer.Option(
-        ["customer_account.csv", "customer.csv"], help="List of metadata CSV files to process"
+        ["columns_metadata.csv"], help="List of metadata CSV files to process"
     ),
     output_dir: str = "output",
     rows: int = 100,
@@ -150,39 +180,41 @@ def generate_data(
     fake.add_provider(FinanceProvider)
     fake.add_provider(TxnDatetimeProvider)
 
-    fk_pool = {}
-
     if seed is not None:
         Faker.seed(seed)
 
     # Read the metadata CSV's
     for metadata_csv in metadata_csvs:
-        metadata = pd.read_csv(metadata_csv)
-        filename = os.path.splitext(metadata_csv)[0]
+        # Group metadata by table_name and source_name to generate separate files
+        metadata_df = pd.read_csv(metadata_csv)
+        table_groups = metadata_df.groupby(['source_name', 'table_name'])
 
-        data = []  # Reset data for each new file
+        for (source_name, table_name), group in table_groups:
+            data = []  # Reset data for each new table
+            console.print(f"Generating data for {source_name}.{table_name}")
 
-        # Generate data rows with progress bar
-        for _ in track(range(rows), "Generating data..."):
-            row = {}
-            for _, meta in metadata.iterrows():
-                fk_pool[filename] = []
-                row[meta["attribute_name"]] = generate_fake_data(meta["attribute_name"], meta["data_type"], fake)
-                if "id" in meta["attribute_name"]:
-                    fk_pool[filename].append((row[meta["attribute_name"]]))
-                if "id" in meta["attribute_name"].lower() and "pk" in meta["key_type"]:
-                    row[meta["attribute_name"]] = fk_pool[row[meta["reference_file"]]].pop()
-            data.append(row)
+            # Generate data rows with progress bar
+            for _ in track(range(rows), "Generating data..."):
+                row = {}
+                for _, meta in group.iterrows():
+                    nullable = meta['column_data_mode'] == 'NULLABLE'
+                    row[meta["column_name"]] = generate_fake_data(
+                        meta["column_name"], 
+                        meta["column_data_type"].lower(), 
+                        fake,
+                        nullable
+                    )
+                data.append(row)
 
             # Convert to DataFrame and save to CSV
             df = pd.DataFrame(data)
-        # Output File Name
-        output_file = os.path.join(output_dir, f"{filename}_output.csv")
-        os.makedirs(output_dir, exist_ok=True)  # Create 'output' if it doesn't exist
-        df.to_csv(output_file, index=False)
+            
+            # Output File Name - use source_name and table_name
+            output_file = os.path.join(output_dir, f"{source_name}_{table_name}.csv")
+            os.makedirs(output_dir, exist_ok=True)  # Create 'output' if it doesn't exist
+            df.to_csv(output_file, index=False)
 
-        console = Console()
-        console.print(f'Generated data saved to "{output_file}"')
+            console.print(f'Generated data saved to "{output_file}"')
 
 
 if __name__ == "__main__":

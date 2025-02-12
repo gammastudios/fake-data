@@ -25,24 +25,43 @@ class MetadataCsvParser:
 
     def read_csv(self, csv_file: str, header: int = 0) -> List[dict]:
         """
-        Read a csv file and return a pandas DataFrame.
+        Read a csv file and return a list of metadata dictionaries.
 
         Args:
             csv_file (str): path to the csv file.
-            header (int): row number to use as the column names.  Defaults to 0.
+            header (int): row number to use as the column names. Defaults to 0.
 
         Returns:
-            pd.DataFrame: the csv file as a pandas DataFrame.
+            List[dict]: List of metadata dictionaries with standardized field names
         """
-        columns = [
-            "attribute_name",
-            "data_type",
-            "key_type",
-            "reference_entity",
-            "reference_attribute",
-            "relationship",
-        ]
-        metadata_df = pd.read_csv(csv_file, names=columns, header=header)
+        # Read the CSV with original column names
+        metadata_df = pd.read_csv(csv_file)
+        
+        # Map new column names to expected format
+        metadata_df = metadata_df.rename(columns={
+            'column_name': 'attribute_name',
+            'column_data_type': 'data_type'
+        })
+        
+        # Add required columns if they don't exist
+        if 'key_type' not in metadata_df.columns:
+            metadata_df['key_type'] = ''
+        if 'reference_entity' not in metadata_df.columns:
+            metadata_df['reference_entity'] = ''
+        if 'reference_attribute' not in metadata_df.columns:
+            metadata_df['reference_attribute'] = ''
+        if 'relationship' not in metadata_df.columns:
+            metadata_df['relationship'] = ''
+            
+        # Convert data types to lowercase to match generate_fake_data expectations
+        metadata_df['data_type'] = metadata_df['data_type'].str.lower()
+        
+        # Add nullable information from column_data_mode
+        metadata_df['nullable'] = metadata_df['column_data_mode'].apply(
+            lambda x: True if x == 'NULLABLE' else False
+        )
+        
+        # Convert to list of dictionaries
         metadata_array = metadata_df.to_dict(orient="records")
-
+        
         return metadata_array
