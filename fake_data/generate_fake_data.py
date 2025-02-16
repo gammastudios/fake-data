@@ -307,11 +307,18 @@ def generate_data(
                 for _, meta in group.iterrows():
                     name_col = 'attribute_name' if 'attribute_name' in meta else 'column_name'
                     type_col = 'data_type' if 'data_type' in meta else 'column_data_type'
-                if meta[type_col].lower() == 'integer':
-                    dtypes[meta[name_col]] = np.int64
+                    if meta[type_col].lower() == 'integer':
+                        dtypes[meta[name_col]] = np.int64
 
-                # Convert to DataFrame and store for FK relationships
+                # Convert to DataFrame
                 df = pd.DataFrame(data)
+                
+                # Apply integer dtypes while preserving nulls
+                for col, dtype in dtypes.items():
+                    if dtype == np.int64:
+                        df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')  # Int64 is nullable integer type
+                    else:
+                        df[col] = df[col].astype(dtype)
                 generated_data[table_name] = df
 
                 # Output File Name - use source_name and table_name
