@@ -222,6 +222,10 @@ def generate_data(
     output_dir: str = "output",
     rows: int = 100,
     seed: int = None,
+    delimiter: str = typer.Option(
+        ",", help="Delimiter to use in output CSV files (comma, tab, pipe)", 
+        callback=lambda x: {"comma": ",", "tab": "\t", "pipe": "|"}.get(x, x)
+    ),
     cache_dir: str = typer.Option("./fake_data_cache", help="fake data working cache directory", envvar="FAKE_DATA_CACHE_DIR"),
 ):
     """
@@ -324,7 +328,7 @@ def generate_data(
                 # Output File Name - use source_name and table_name
                 output_file = os.path.join(output_dir, f"{source_name}_{table_name}.csv")
                 os.makedirs(output_dir, exist_ok=True)  # Create 'output' if it doesn't exist
-                df.to_csv(output_file, index=False)
+                df.to_csv(output_file, index=False, sep=delimiter)
 
                 console.print(f'Generated data saved to "{output_file}"')
 
